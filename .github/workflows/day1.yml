@@ -9,4 +9,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Printing Message
-        run: echo "Hello world"
+        run: echo "Hello world from PR"
