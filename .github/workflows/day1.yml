@@ -1,9 +1,21 @@
 name: my first workflow
 on:
+  schedule:
+    # Runs every day at 9:00 AM UTC
+    - cron: '0 9 * * *'
   pull_request:
   push:
     branches:
       - main  
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production    
 jobs:
   build:
     runs-on: ubuntu-latest
