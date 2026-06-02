@@ -21,4 +21,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Printing Message
-        run: echo "Hello world from PR"
+        run: echo ${{ inputs.environment }}
