@@ -1,4 +1,4 @@
-name: my first workflow
+name: Day 5 workflow
 on:
   schedule:
     # Runs every day at 9:00 AM UTC
