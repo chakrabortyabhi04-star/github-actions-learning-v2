@@ -27,6 +27,11 @@ jobs:
         run: echo "validate successful"
       - name: Printing variable
         run:  echo "$APP_NAME $VERSION "
+      - name: Print context info
+        run: |
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Event: ${{ github.event_name }}"  
 
   security:
     needs: validate
