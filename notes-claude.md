@@ -1,4 +1,7 @@
-# GitHub Actions — Days 1–5 Notes
+# GitHub Actions — Days 1–6 Notes
+> Written by Claude | Repository: `github-actions-learning-v2` | github.com/chakrabortyabhi04-star
+
+---
 
 ## Day 1 — CI/CD Mental Model and Setup
 
@@ -33,9 +36,9 @@ A runner is a machine that executes your workflow. Key facts:
 
 ### Git Workflow
 ```bash
-git add .           # Stage all changes (dot = everything from current directory downward)
-git commit -m "message"   # Snapshot with a description
-git push origin main      # Send to GitHub
+git add .                      # Stage all changes
+git commit -m "message"        # Snapshot with a description
+git push origin main           # Send to GitHub
 ```
 
 ---
@@ -274,6 +277,153 @@ Install these to catch YAML errors automatically:
 
 ---
 
+## Day 6 — Environment Variables and Contexts
+
+### Why Variables Exist
+Three reasons variables exist in GitHub Actions:
+
+1. **Single source of truth** — define once, use everywhere. Change `VERSION: 1.0.0` to `VERSION: 2.0.0` in one place and every job picks it up automatically.
+2. **Separation of config from code** — workflow logic stays the same, only values change between environments.
+3. **Security** — sensitive values like passwords and API keys never get hardcoded. They live in GitHub Secrets and get injected as variables at runtime.
+
+### Three Levels of env: Scope
+
+```yaml
+name: scoped variables example
+
+env:                          # WORKFLOW LEVEL — available in every job and step
+  APP_NAME: my-app
+  VERSION: 1.0.0
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    env:                      # JOB LEVEL — available only in this job's steps
+      SCAN_LEVEL: deep
+    steps:
+      - name: step level example
+        env:                  # STEP LEVEL — available only in this one step
+          TEMP_TOKEN: abc123
+        run: echo "$APP_NAME $SCAN_LEVEL $TEMP_TOKEN"
+```
+
+**Scope rule:** Variables only flow downward — a job-level variable is invisible to other jobs. A step-level variable is invisible to other steps in the same job.
+
+### Accessing env: Variables in run: Commands
+```yaml
+run: echo "$APP_NAME $VERSION"    # Shell syntax — $ prefix
+```
+
+Shell syntax works because GitHub Actions injects all `env:` variables into the runner's shell environment before executing `run:` commands.
+
+### GitHub Contexts — Built-in Variables
+GitHub automatically provides information about every run. You don't define these — they just exist.
+
+```yaml
+steps:
+  - name: Print context info
+    run: |
+      echo "Triggered by: ${{ github.actor }}"
+      echo "Branch: ${{ github.ref }}"
+      echo "Event: ${{ github.event_name }}"
+```
+
+| Context | What it contains | Real example |
+|---------|-----------------|--------------|
+| `github.actor` | Username who triggered the run | `chakrabortyabhi04-star` |
+| `github.ref` | Full branch reference | `refs/heads/main` |
+| `github.event_name` | Type of event that fired | `push`, `pull_request`, `workflow_dispatch` |
+| `github.sha` | Exact commit hash | `a83e2e7f...` |
+| `github.repository` | Repo name | `chakrabortyabhi04-star/github-actions-learning-v2` |
+
+### run: | — Multi-line Shell Commands
+```yaml
+run: |
+  echo "line one"
+  echo "line two"
+  echo "line three"
+```
+
+The `|` (pipe character) after `run:` tells YAML to treat everything indented below as a multi-line string. Each line runs as a separate shell command in sequence.
+
+### Real Production Workflow Using Variables and Contexts
+
+```yaml
+name: Production Deployment Pipeline
+
+env:
+  APP_NAME: customer-portal
+  AZURE_REGION: eastus
+  DOCKER_REGISTRY: mycompany.azurecr.io
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deploy target'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print deployment info
+        run: |
+          echo "App: $APP_NAME"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Event: ${{ github.event_name }}"
+
+  security:
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      SCAN_LEVEL: deep
+    steps:
+      - name: Scan for secrets
+        run: echo "Running $SCAN_LEVEL scan on $APP_NAME"
+
+  build:
+    needs: security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Docker image
+        run: |
+          echo "Building $DOCKER_REGISTRY/$APP_NAME:${{ github.sha }}"
+          echo "Pushing to $AZURE_REGION registry"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to environment
+        run: |
+          echo "Deploying $APP_NAME to ${{ inputs.environment }}"
+          echo "Image tag: ${{ github.sha }}"
+```
+
+**What each part does in real life:**
+- `APP_NAME`, `DOCKER_REGISTRY` — defined once, used in 3+ jobs. Change in one place, updates everywhere.
+- `github.actor` — audit trail. Every deployment log shows who triggered it.
+- `github.sha` — the exact commit hash becomes the Docker image tag. You always know which exact code is running in production.
+- `SCAN_LEVEL: deep` scoped to security job — other jobs don't need this.
+
+### Hands-on Result
+- Added workflow-level `env:` with `APP_NAME: my-app` and `VERSION: 1.0.0`
+- Confirmed `my-app 1.0.0` printed in all three jobs via `$APP_NAME $VERSION`
+- Added `SCAN_LEVEL: deep` at job level in `security` — confirmed `deep` printed only there
+- Added `github.actor`, `github.ref`, `github.event_name` context step — live values printed in logs
+- Observed schedule trigger firing automatically at 9:00 AM UTC (2:30 PM IST)
+
+---
+
 ## Quick Reference — YAML Rules
 
 | Rule | Wrong | Right |
@@ -282,6 +432,16 @@ Install these to catch YAML errors automatically:
 | List item dash | `-item` | `- item` |
 | Step name and run together | `- name: X` then `- run: Y` | `- name: X` then `  run: Y` (same item) |
 | No space before colon | `branches :` | `branches:` |
+| Multi-line run command | `run: echo a echo b` | `run: |` then indented lines |
+
+---
+
+## Two Ways to Access Variables — Summary
+
+| Syntax | Used for | Example |
+|--------|----------|---------|
+| `$VARIABLE_NAME` | `env:` variables in `run:` shell commands | `echo "$APP_NAME"` |
+| `${{ context.property }}` | GitHub contexts, inputs, secrets | `${{ github.actor }}` |
 
 ---
 
@@ -302,6 +462,12 @@ Install these to catch YAML errors automatically:
 **"What is the difference between push and pull_request triggers?"**
 > `push` fires when commits are pushed directly to a branch. `pull_request` fires when a PR event happens — opened, updated, or merged. In a real team workflow, developers push to feature branches and open PRs. The `pull_request` trigger runs automated checks on the PR before the team lead reviews it.
 
+**"How do you use environment variables in GitHub Actions?"**
+> Environment variables are defined using `env:` at three levels — workflow, job, or step. Workflow-level variables are available everywhere. Job-level variables are scoped to that job only. They're accessed in `run:` commands using shell syntax like `$APP_NAME`. GitHub also provides built-in context variables like `${{ github.actor }}` and `${{ github.ref }}` that contain information about the run — who triggered it, which branch, what event.
+
+**"What are GitHub Actions contexts?"**
+> Contexts are built-in objects GitHub provides automatically for every workflow run. The most useful is the `github` context — it contains `github.actor` (who triggered the run), `github.ref` (which branch), `github.event_name` (push, PR, or manual), and `github.sha` (the exact commit hash). Teams use these for audit trails, conditional logic, and tagging Docker images with the exact commit that built them.
+
 ---
 
-*Notes maintained by Claude | Last updated: Day 5*
+*Notes maintained by Claude | Last updated: Day 6*
