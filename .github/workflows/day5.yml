@@ -1,4 +1,7 @@
 name: Day 5 workflow
+env:
+  APP_NAME: my-app
+  VERSION: 1.0.0
 on:
   schedule:
     # Runs every day at 9:00 AM UTC
@@ -22,6 +25,8 @@ jobs:
     steps:
       - name: Printing the message
         run: echo "validate successful"
+      - name: Printing variable
+        run:  echo "$APP_NAME $VERSION "
 
   security:
     needs: validate
@@ -29,6 +34,8 @@ jobs:
     steps:
       - name: Printing the message
         run: echo "security successful"
+      - name: Printing variable
+        run:  echo "$APP_NAME $VERSION "
 
   build:
     needs: security  
@@ -36,5 +43,7 @@ jobs:
     steps:
       - name: Printing the message
         run: echo "build successful"
+      - name: Printing variable
+        run:  echo "$APP_NAME $VERSION "  
 
          
