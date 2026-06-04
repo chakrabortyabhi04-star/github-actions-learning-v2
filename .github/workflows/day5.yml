@@ -36,11 +36,16 @@ jobs:
   security:
     needs: validate
     runs-on: ubuntu-latest
+    env:
+      SCAN_LEVEL: deep
     steps:
       - name: Printing the message
         run: echo "security successful"
       - name: Printing variable
         run:  echo "$APP_NAME $VERSION "
+      - name: Printing a message
+        run: echo "$SCAN_LEVEL"
+
 
   build:
     needs: security  
