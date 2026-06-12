@@ -5,11 +5,19 @@ jobs:
   secret-demo:
     runs-on: ubuntu-latest
     steps:
-      
       - name: Use Secret
-        
         run: echo "API Key is ${{ secrets.MY_API_KEY }}"
-
-      # Pass secret as an input to an action
       - name: Print actor
         run: echo "${{ github.actor }}"
+      
+      
+      - name: Use Secret for DB Password 
+        run: echo "DB password is ${{ secrets.DB_PASSWORD }}"
+
+      - name: Print actor
+        run: echo "${{ github.actor }}"  
+
+      - name: Use DB Password via env
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: echo "DB Password is $DB_PASSWORD"
