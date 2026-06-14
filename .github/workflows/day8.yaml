@@ -1,4 +1,4 @@
-name: Day 8 - Actions and Marketplace
+name: Learning actions/checkout and marketplace
 
 on:
   push:
