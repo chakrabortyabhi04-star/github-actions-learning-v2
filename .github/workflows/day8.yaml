@@ -4,9 +4,7 @@ on:
   push:
     branches:
       - main
-    paths:
-      - '.github/workflows/day8.yml'
-
+    
 jobs:
   build:
     runs-on: ubuntu-latest
